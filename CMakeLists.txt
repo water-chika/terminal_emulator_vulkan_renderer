@@ -1,3 +1,10 @@
+cmake_minimum_required(VERSION 3.20)
+
+project(terminal_emulator_vulkan_renderer)
+
+find_package(Vulkan REQUIRED)
+add_subdirectory(vulkan_helper)
+add_subdirectory(freetype)
 
 add_executable(generate_spirv_reader_include generate_spirv_reader_include.cpp)
 set_property(TARGET generate_spirv_reader_include PROPERTY CXX_STANDARD 23)
@@ -6,9 +13,9 @@ add_custom_command(COMMENT "Generating spirv_reader_os.hpp"
                     COMMAND generate_spirv_reader_include ${CMAKE_CURRENT_BINARY_DIR}/include/spirv_reader_os.hpp
                     DEPENDS generate_spirv_reader_include)
 
-add_library(vulkan_render
-    vulkan_render.cpp
-    vulkan_render.hpp
+add_library(vulkan_renderer
+    vulkan_renderer.cpp
+    vulkan_renderer.hpp
     spirv_reader.hpp
     vertex_renderer.hpp
     vulkan_utility.hpp
@@ -21,12 +28,12 @@ add_library(vulkan_render
     ${CMAKE_CURRENT_BINARY_DIR}/task.spv
 )
 target_include_directories(
-    vulkan_render
+    vulkan_renderer
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
     PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/include)
 
-target_link_libraries(vulkan_render PUBLIC glfw Vulkan::Vulkan freetype)
-set_property(TARGET vulkan_render PROPERTY CXX_STANDARD 23)
+target_link_libraries(vulkan_renderer PUBLIC glfw Vulkan::Vulkan vulkan_helper freetype)
+set_property(TARGET vulkan_renderer PROPERTY CXX_STANDARD 23)
 
 function(compile_glsl stage glsl_file spv_file)
 add_custom_command(COMMENT "Compiling ${stage} shader"

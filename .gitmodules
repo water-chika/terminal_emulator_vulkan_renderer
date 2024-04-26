@@ -1,0 +1,6 @@
+[submodule "vulkan_helper"]
+	path = vulkan_helper
+	url = https://github.com/water-chika/vulkan_helper
+[submodule "freetype"]
+	path = freetype
+	url = https://github.com/freetype/freetype

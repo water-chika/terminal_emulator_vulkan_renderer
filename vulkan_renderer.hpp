@@ -1,5 +1,6 @@
 #pragma once
 #include "vulkan_utility.hpp"
+#include <vulkan_helper.hpp>
 
 class simple_draw_command {
 public:
@@ -42,8 +43,8 @@ private:
     vk::CommandBuffer m_cmd;
 };
 
-
-class vulkan_render_prepare : public fix_instance_destroy {
+template<vulkan_helper::concept_helper::instance Instance>
+class vulkan_render_prepare : public Instance {
 public:
     auto select_physical_device(auto instance) {
         return vulkan::shared::select_physical_device(instance);
@@ -309,7 +310,7 @@ public:
             [](auto& ext) { return ext.data();  });
 
 
-        physical_device = select_physical_device(instance);
+        physical_device = select_physical_device(Instance::get_vulkan_instance);
 
 
         float queuePriority = 0.0f;
@@ -318,7 +319,7 @@ public:
         auto queue_family_index = select_queue_family(physical_device);
 
 
-        vk::SharedSurfaceKHR surface = get_surface(instance, get_surface_from_extern);
+        vk::SharedSurfaceKHR surface = get_surface(Instance::get_vulkan_instance, get_surface_from_extern);
 
 
         auto surface_capabilities = get_surface_capabilities(physical_device, surface);
@@ -422,8 +423,10 @@ protected:
     uint32_t character_count;
 };
 
-class mesh_renderer : public vulkan_render_prepare {
+template<vulkan_helper::concept_helper::instance instance>
+class mesh_renderer : public vulkan_render_prepare<instance> {
 public:
+    using parent = vulkan_render_prepare<instance>;
     auto create_pipeline(auto device, auto render_pass, auto pipeline_layout, uint32_t character_count) {
         vulkan::task_stage_info task_stage_info{
             task_shader_path, "main",
@@ -461,26 +464,26 @@ public:
     }
     void create_and_update_terminal_buffer_relate_data() {
         vulkan_render_prepare::create_and_update_terminal_buffer_relate_data(
-            descriptor_set, sampler, *p_terminal_buffer, imageViews
+            parent::descriptor_set, parent::sampler, *parent::p_terminal_buffer, parent::imageViews
         );
-        pipeline = create_pipeline(device, render_pass, pipeline_layout, character_count);
-        vk::DispatchLoaderDynamic dldid(*instance, vkGetInstanceProcAddr, *device);
-        for (integer_less_equal<decltype(imageViews.size())> i{ 0, imageViews.size() }; i < imageViews.size(); i++) {
+        pipeline = create_pipeline(parent::device, parent::render_pass, parent::pipeline_layout, parent::character_count);
+        vk::DispatchLoaderDynamic dldid(parent::get_vulkan_instance(), vkGetInstanceProcAddr, *parent::device);
+        for (integer_less_equal<decltype(parent::imageViews.size())> i{ 0, parent::imageViews.size() }; i < parent::imageViews.size(); i++) {
             simple_draw_command draw_command{
                 command_buffers[i],
-                *render_pass,
-                *pipeline_layout,
-                *pipeline,
-                descriptor_set,
-                *framebuffers[i],
-                swapchain_extent, dldid };
+                *parent::render_pass,
+                *parent::pipeline_layout,
+                *parent::pipeline,
+                parent::descriptor_set,
+                *parent::framebuffers[i],
+                parent::swapchain_extent, dldid };
         }
     }
     void init(auto&& get_surface_from_extern, auto& terminal_buffer) {
         vulkan_render_prepare::init(get_surface_from_extern, terminal_buffer);
         vk::CommandBufferAllocateInfo commandBufferAllocateInfo(
-            *command_pool, vk::CommandBufferLevel::ePrimary, imageViews.size());
-        command_buffers = device->allocateCommandBuffers(commandBufferAllocateInfo);
+            *parent::command_pool, vk::CommandBufferLevel::ePrimary, parent::imageViews.size());
+        command_buffers = parent::device->allocateCommandBuffers(commandBufferAllocateInfo);
         create_and_update_terminal_buffer_relate_data();
     }
     void notify_update() {
@@ -491,8 +494,10 @@ protected:
     std::vector<vk::CommandBuffer> command_buffers;
 };
 
-class vertex_renderer : public vulkan_render_prepare {
+template<vulkan_helper::concept_helper::instance Instance>
+class vertex_renderer : public vulkan_render_prepare<Instance> {
 public:
+    using parent = vulkan_render_prepare<Instance>;
     struct vertex {
         float x, y, z, w;
     };
@@ -529,24 +534,24 @@ public:
                     fragment_shader_path, *render_pass, *pipeline_layout).value, device };
     }
     void create_vertex_buffer(auto&& vertices) {
-        auto [buffer, memory, memory_size] = vulkan::create_vertex_buffer(*physical_device, *device, vertices);
-        vertex_buffer = vk::SharedBuffer{ buffer, device };
-        vertex_buffer_memory = vk::SharedDeviceMemory{ memory, device };
+        auto [buffer, memory, memory_size] = vulkan::create_vertex_buffer(*parent::physical_device, *parent::device, vertices);
+        vertex_buffer = vk::SharedBuffer{ buffer, parent::device };
+        vertex_buffer_memory = vk::SharedDeviceMemory{ memory, parent::device };
     }
     void create_and_update_terminal_buffer_relate_data() {
         vulkan_render_prepare::create_and_update_terminal_buffer_relate_data(
-            descriptor_set, sampler, *p_terminal_buffer, imageViews
+            parent::descriptor_set, parent::sampler, *parent::p_terminal_buffer, parent::imageViews
         );
         std::vector<vertex> vertices{};
-        auto& terminal_buffer = *p_terminal_buffer;
+        auto& terminal_buffer = *parent::p_terminal_buffer;
         for (int y = 0; y < terminal_buffer.get_dim1_size(); y++) {
             for (int x = 0; x < terminal_buffer.get_dim0_size(); x++) {
                 float width = 2.0f / terminal_buffer.get_dim0_size();
                 float height = 2.0f / terminal_buffer.get_dim1_size();
                 float s_x = -1 + x * width;
                 float s_y = -1 + y * height;
-                auto index = char_indices[std::pair{ x, y }];
-                const float tex_width = 1.0 / character_count;
+                auto index = parent::char_indices[std::pair{ x, y }];
+                const float tex_width = 1.0 / parent::character_count;
                 const float tex_advance = tex_width;
                 const float tex_offset = tex_width * index;
                 vertices.push_back(vertex{ s_x, s_y, tex_offset, 0 });
@@ -558,24 +563,24 @@ public:
             }
         }
         create_vertex_buffer(vertices);
-        pipeline = create_pipeline(device, render_pass, pipeline_layout, character_count);
-        vk::DispatchLoaderDynamic dldid(*instance, vkGetInstanceProcAddr, *device);
-        for (integer_less_equal<decltype(imageViews.size())> i{ 0, imageViews.size() }; i < imageViews.size(); i++) {
+        pipeline = create_pipeline(parent::device, parent::render_pass, parent::pipeline_layout, parent::character_count);
+        vk::DispatchLoaderDynamic dldid(*parent::instance, vkGetInstanceProcAddr, *parent::device);
+        for (integer_less_equal<decltype(parent::imageViews.size())> i{ 0, parent::imageViews.size() }; i < parent::imageViews.size(); i++) {
             record_draw_command(
                 command_buffers[i],
-                *render_pass,
-                *pipeline_layout,
-                *pipeline,
-                descriptor_set,
-                *framebuffers[i],
-                swapchain_extent, dldid);
+                *parent::render_pass,
+                *parent::pipeline_layout,
+                *parent::pipeline,
+                parent::descriptor_set,
+                *parent::framebuffers[i],
+                parent::swapchain_extent, dldid);
         }
     }
     void init(auto&& get_surface_from_extern, auto& terminal_buffer) {
         vulkan_render_prepare::init(get_surface_from_extern, terminal_buffer);
         vk::CommandBufferAllocateInfo commandBufferAllocateInfo(
-            *command_pool, vk::CommandBufferLevel::ePrimary, imageViews.size());
-        command_buffers = device->allocateCommandBuffers(commandBufferAllocateInfo);
+            *parent::command_pool, vk::CommandBufferLevel::ePrimary, parent::imageViews.size());
+        command_buffers = parent::device->allocateCommandBuffers(commandBufferAllocateInfo);
         create_and_update_terminal_buffer_relate_data();
     }
     void notify_update() {
@@ -607,10 +612,10 @@ public:
             cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
                 pipeline_layout, 0, descriptor_set, nullptr);
             cmd.bindVertexBuffers(0, *vertex_buffer, { 0 });
-            cmd.bindVertexBuffers(1, *char_indices_buffer, { 0 });
+            cmd.bindVertexBuffers(1, *parent::char_indices_buffer, { 0 });
             cmd.setViewport(0, vk::Viewport(0, 0, swapchain_extent.width, swapchain_extent.height, 0, 1));
             cmd.setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), swapchain_extent));
-            cmd.draw(p_terminal_buffer->size()*6, 1, 0, 0);
+            cmd.draw(parent::p_terminal_buffer->size()*6, 1, 0, 0);
             cmd.endRenderPass();
             cmd.end();
     }
