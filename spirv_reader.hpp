@@ -3,6 +3,7 @@
 #include <vector>
 #include <filesystem>
 #include <cassert>
+#include <stdexcept>
 
 #include "spirv_reader_os.hpp"
 
@@ -12,6 +13,9 @@ public:
         : spirv_reader_os_member{ path} {
 #ifdef __unix__
         m_file_descriptor = open(path.c_str(), O_RDONLY);
+        if (m_file_descriptor == -1) {
+            throw std::runtime_error{"failed to open spirv file"};
+        }
         m_size = lseek(m_file_descriptor, 0, SEEK_END);
         mmaped_ptr = mmap(NULL, m_size, PROT_READ, MAP_PRIVATE, m_file_descriptor, 0);
 #endif
