@@ -84,41 +84,122 @@ private:
     vk::SharedPhysicalDevice m_physical_device;
 };
 
+    template<class T>
+    class add_mesh_extension : public T {
+    public:
+        auto get_extensions() {
+            auto ext = T::get_extensions();
+            ext.push_back(vk::EXTMeshShaderExtensionName);
+            return ext;
+        }
+    };
+template<class T>
+class add_device_create_info_structure_chain : public T {
+public:
+    auto get_device_create_info_structure_chain() {
+        return vk::StructureChain{ vk::DeviceCreateInfo{} };
+    }
+};
+
+class mesh_device_create_info {
+public:
+    mesh_device_create_info(uint32_t queue_family_index, std::vector<std::string> device_extensions)
+    : m_queue_priority{}, m_queue_create_info{}, m_structure_chain{}, m_device_extensions{device_extensions} {
+        m_queue_priority = 0.0f;
+        m_queue_create_info.setQueuePriorities(m_queue_priority).setQueueFamilyIndex(queue_family_index);
+
+        m_raw_ptr_device_extensions.resize(m_device_extensions.size());
+        std::ranges::transform(
+            m_device_extensions,
+            m_raw_ptr_device_extensions.begin(),
+            [](auto& ext) { return ext.c_str();  });
+        m_structure_chain.get<vk::DeviceCreateInfo>().setQueueCreateInfos(m_queue_create_info).setPEnabledExtensionNames(m_raw_ptr_device_extensions);
+        m_structure_chain.get<vk::PhysicalDeviceMeshShaderFeaturesEXT>().setMeshShader(true).setTaskShader(true);
+        m_structure_chain.get<vk::PhysicalDeviceSynchronization2Features>().setSynchronization2(true);
+        m_structure_chain.get<vk::PhysicalDeviceMaintenance4Features>().setMaintenance4(true);
+    }
+    vk::DeviceCreateInfo& get_device_create_info() {
+        return m_structure_chain.get<vk::DeviceCreateInfo>();
+    }
+private:
+    float m_queue_priority;
+    vk::DeviceQueueCreateInfo m_queue_create_info;
+    vk::StructureChain<
+        vk::DeviceCreateInfo,
+        vk::PhysicalDeviceMeshShaderFeaturesEXT,
+        vk::PhysicalDeviceMaintenance4Features,
+        vk::PhysicalDeviceSynchronization2Features> m_structure_chain;
+    std::vector<std::string> m_device_extensions;
+    std::vector<const char*> m_raw_ptr_device_extensions;
+};
+class vertex_device_create_info {
+public:
+    vertex_device_create_info(uint32_t queue_family_index, std::vector<std::string> device_extensions)
+        : m_queue_priority{}, m_queue_create_info{}, m_structure_chain{}, m_device_extensions{ device_extensions } {
+        m_queue_priority = 0.0f;
+        m_queue_create_info.setQueuePriorities(m_queue_priority).setQueueFamilyIndex(queue_family_index);
+
+        m_raw_ptr_device_extensions.resize(m_device_extensions.size());
+        std::ranges::transform(
+            m_device_extensions,
+            m_raw_ptr_device_extensions.begin(),
+            [](auto& ext) { return ext.c_str();  });
+        m_structure_chain.get<vk::DeviceCreateInfo>().setQueueCreateInfos(m_queue_create_info).setPEnabledExtensionNames(m_raw_ptr_device_extensions);
+        m_structure_chain.get<vk::PhysicalDeviceSynchronization2Features>().setSynchronization2(true);
+        m_structure_chain.get<vk::PhysicalDeviceMaintenance4Features>().setMaintenance4(true);
+    }
+    vk::DeviceCreateInfo& get_device_create_info() {
+        return m_structure_chain.get<vk::DeviceCreateInfo>();
+    }
+private:
+    float m_queue_priority;
+    vk::DeviceQueueCreateInfo m_queue_create_info;
+    vk::StructureChain<
+        vk::DeviceCreateInfo,
+        vk::PhysicalDeviceMaintenance4Features,
+        vk::PhysicalDeviceSynchronization2Features> m_structure_chain;
+    std::vector<std::string> m_device_extensions;
+    std::vector<const char*> m_raw_ptr_device_extensions;
+};
+
+template<class T>
+class add_mesh_device_create_info_aggregate : public T{
+public:
+    using parent = T;
+    auto get_device_create_info_aggregate() {
+        uint32_t queue_family_index = parent::get_queue_family_index();
+        std::vector<std::string> deviceExtensions = parent::get_extensions();
+        return mesh_device_create_info{queue_family_index, deviceExtensions};
+    }
+};
+template<class T>
+class add_vertex_device_create_info_aggregate : public T {
+public:
+    using parent = T;
+    auto get_device_create_info_aggregate() {
+        uint32_t queue_family_index = parent::get_queue_family_index();
+        std::vector<std::string> deviceExtensions = parent::get_extensions();
+        return vertex_device_create_info{ queue_family_index, deviceExtensions };
+    }
+};
+template<class T>
+class set_queue_family_index : public T{
+public:
+    auto get_queue_family_index() {
+        return 0;
+    }
+};
+
 template<concept_helper::shared::physical_device PhysicalDevice>
 class add_shared_device : public PhysicalDevice {
 public:
+    using parent = PhysicalDevice;
     add_shared_device() {
         auto physical_device = PhysicalDevice::get_vulkan_physical_device();
 
-        auto deviceExtensions = std::array{
-            vk::KHRSwapchainExtensionName,
-            //vk::EXTMeshShaderExtensionName,
-        };
+        auto device_create_info_aggregate = parent::get_device_create_info_aggregate();
 
-
-        std::vector<const char*> device_extensions(deviceExtensions.size());
-        std::ranges::transform(
-            deviceExtensions,
-            device_extensions.begin(),
-            [](auto& ext) { return ext;  });
-
-        float queuePriority = 0.0f;
-
-        m_queue_family_index = 0;
-
-        auto deviceQueueCreateInfo = vk::DeviceQueueCreateInfo{}.setQueueFamilyIndex(m_queue_family_index).setQueuePriorities(queuePriority);
-
-        vk::StructureChain device_create_info{
-            vk::DeviceCreateInfo{}
-            .setQueueCreateInfos(deviceQueueCreateInfo)
-            .setPEnabledExtensionNames(device_extensions),
-            vk::PhysicalDeviceFeatures2{},
-            //vk::PhysicalDeviceMeshShaderFeaturesEXT{}.setMeshShader(true).setTaskShader(true),
-            vk::PhysicalDeviceMaintenance4Features{}.setMaintenance4(true),
-            vk::PhysicalDeviceSynchronization2Features{}.setSynchronization2(true),
-        };
-
-        m_device = vk::SharedDevice{ physical_device.createDevice(device_create_info.get<vk::DeviceCreateInfo>()) };
+        m_device = vk::SharedDevice{ physical_device.createDevice(device_create_info_aggregate.get_device_create_info()) };
     }
     auto get_vulkan_device() {
         return *m_device;
@@ -126,12 +207,8 @@ public:
     auto get_vulkan_shared_device() {
         return m_device;
     }
-    auto get_queue_family_index() {
-        return m_queue_family_index;
-    }
 private:
     vk::SharedDevice m_device;
-    uint32_t m_queue_family_index;
 };
 
 template<concept_helper::shared::device Device>

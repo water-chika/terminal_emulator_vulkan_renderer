@@ -21,11 +21,11 @@ add_library(vulkan_renderer
     vulkan_utility.hpp
     ${CMAKE_CURRENT_BINARY_DIR}/include/shader_path.hpp
     ${CMAKE_CURRENT_BINARY_DIR}/include/spirv_reader_os.hpp
-    ${CMAKE_CURRENT_BINARY_DIR}/vertex.spv
-    ${CMAKE_CURRENT_BINARY_DIR}/geometry.spv
-    ${CMAKE_CURRENT_BINARY_DIR}/fragment.spv
-    ${CMAKE_CURRENT_BINARY_DIR}/mesh.spv
-    ${CMAKE_CURRENT_BINARY_DIR}/task.spv
+    ${CMAKE_BINARY_DIR}/shaders/vertex.spv
+    ${CMAKE_BINARY_DIR}/shaders/geometry.spv
+    ${CMAKE_BINARY_DIR}/shaders/fragment.spv
+    ${CMAKE_BINARY_DIR}/shaders/mesh.spv
+    ${CMAKE_BINARY_DIR}/shaders/task.spv
 )
 target_include_directories(
     vulkan_renderer
@@ -46,11 +46,11 @@ endfunction()
 function(compile_glsl_help stage file_name_without_postfix)
 	compile_glsl(${stage}
 		${CMAKE_CURRENT_SOURCE_DIR}/${file_name_without_postfix}.glsl
-		${CMAKE_CURRENT_BINARY_DIR}/${file_name_without_postfix}.spv
+		${CMAKE_BINARY_DIR}/shaders/${file_name_without_postfix}.spv
 	)
     set(
         ${file_name_without_postfix}_shader_path
-        "${CMAKE_CURRENT_BINARY_DIR}/${file_name_without_postfix}.spv"
+        "shaders/${file_name_without_postfix}.spv"
         PARENT_SCOPE
     )
 endfunction()
