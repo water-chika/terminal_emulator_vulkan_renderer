@@ -1,4 +1,8 @@
 #pragma once
+#ifdef WIN32
+#define VK_USE_PLATFORM_WIN32_KHR
+#define NOMINMAX
+#endif
 #include "vulkan_utility.hpp"
 #include <vulkan_helper.hpp>
 
@@ -88,7 +92,7 @@ public:
 
         auto deviceExtensions = std::array{
             vk::KHRSwapchainExtensionName,
-            vk::EXTMeshShaderExtensionName,
+            //vk::EXTMeshShaderExtensionName,
         };
 
 
@@ -109,7 +113,7 @@ public:
             .setQueueCreateInfos(deviceQueueCreateInfo)
             .setPEnabledExtensionNames(device_extensions),
             vk::PhysicalDeviceFeatures2{},
-            vk::PhysicalDeviceMeshShaderFeaturesEXT{}.setMeshShader(true).setTaskShader(true),
+            //vk::PhysicalDeviceMeshShaderFeaturesEXT{}.setMeshShader(true).setTaskShader(true),
             vk::PhysicalDeviceMaintenance4Features{}.setMaintenance4(true),
             vk::PhysicalDeviceSynchronization2Features{}.setSynchronization2(true),
         };
@@ -378,7 +382,7 @@ public:
                 });
         }
     }
-    void init(auto&& get_surface_from_extern, auto& terminal_buffer) {
+    void init(auto& terminal_buffer) {
         auto physical_device = parent::get_vulkan_physical_device();
         auto device = parent::get_vulkan_device();
         auto shared_device = parent::get_vulkan_shared_device();
@@ -392,7 +396,7 @@ public:
         auto descriptor_set_bindings = create_descriptor_set_bindings();
 
 
-        vk::SharedSurfaceKHR surface = get_surface(parent::get_vulkan_shared_instance(), get_surface_from_extern);
+        vk::SharedSurfaceKHR surface = parent::get_vulkan_shared_surface();
 
 
         auto surface_capabilities = get_surface_capabilities(physical_device, surface);
@@ -533,8 +537,8 @@ public:
                 parent::swapchain_extent, dldid };
         }
     }
-    void init(auto&& get_surface_from_extern, auto& terminal_buffer) {
-        parent::init(get_surface_from_extern, terminal_buffer);
+    void init(auto& terminal_buffer) {
+        parent::init(terminal_buffer);
         vk::CommandBufferAllocateInfo commandBufferAllocateInfo(
             *parent::command_pool, vk::CommandBufferLevel::ePrimary, parent::imageViews.size());
         command_buffers = parent::get_vulkan_device().allocateCommandBuffers(commandBufferAllocateInfo);
@@ -588,11 +592,15 @@ public:
                     fragment_shader_path, *render_pass, *pipeline_layout).value, device };
     }
     void create_vertex_buffer(auto&& vertices) {
-        auto [buffer, memory, memory_size] = vulkan::create_vertex_buffer(*parent::physical_device, *parent::device, vertices);
-        vertex_buffer = vk::SharedBuffer{ buffer, parent::device };
-        vertex_buffer_memory = vk::SharedDeviceMemory{ memory, parent::device };
+        auto physical_device = parent::get_vulkan_physical_device();
+        auto device = parent::get_vulkan_device();
+        auto shared_device = parent::get_vulkan_shared_device();
+        auto [buffer, memory, memory_size] = vulkan::create_vertex_buffer(physical_device, device, vertices);
+        vertex_buffer = vk::SharedBuffer{ buffer, shared_device};
+        vertex_buffer_memory = vk::SharedDeviceMemory{ memory, shared_device};
     }
     void create_and_update_terminal_buffer_relate_data() {
+        auto device = parent::get_vulkan_shared_device();
         parent::create_and_update_terminal_buffer_relate_data(
             parent::descriptor_set, parent::sampler, *parent::p_terminal_buffer, parent::imageViews
         );
@@ -617,8 +625,8 @@ public:
             }
         }
         create_vertex_buffer(vertices);
-        pipeline = create_pipeline(parent::device, parent::render_pass, parent::pipeline_layout, parent::character_count);
-        vk::DispatchLoaderDynamic dldid(*parent::get_vulkan_instance(), vkGetInstanceProcAddr, *parent::device);
+        pipeline = create_pipeline(device, parent::render_pass, parent::pipeline_layout, parent::character_count);
+        vk::DispatchLoaderDynamic dldid(parent::get_vulkan_instance(), vkGetInstanceProcAddr, *device);
         for (integer_less_equal<decltype(parent::imageViews.size())> i{ 0, parent::imageViews.size() }; i < parent::imageViews.size(); i++) {
             record_draw_command(
                 command_buffers[i],
@@ -630,11 +638,12 @@ public:
                 parent::swapchain_extent, dldid);
         }
     }
-    void init(auto&& get_surface_from_extern, auto& terminal_buffer) {
-        parent::init(get_surface_from_extern, terminal_buffer);
+    void init(auto& terminal_buffer) {
+        auto device = parent::get_vulkan_device();
+        parent::init(terminal_buffer);
         vk::CommandBufferAllocateInfo commandBufferAllocateInfo(
             *parent::command_pool, vk::CommandBufferLevel::ePrimary, parent::imageViews.size());
-        command_buffers = parent::device->allocateCommandBuffers(commandBufferAllocateInfo);
+        command_buffers = device.allocateCommandBuffers(commandBufferAllocateInfo);
         create_and_update_terminal_buffer_relate_data();
     }
     void notify_update() {
@@ -707,9 +716,8 @@ public:
             assert(res == vk::Result::eSuccess);
         }
     }
-    void init(auto&& get_surface, auto& terminal_buffer) {
-        Renderer::init(std::forward<decltype(get_surface)>(get_surface),
-            terminal_buffer);
+    void init(auto& terminal_buffer) {
+        Renderer::init(terminal_buffer);
         present_manager = std::make_shared<vulkan::present_manager>(parent::get_vulkan_shared_device(), 10);
         set_texture_image_layout();
     }
