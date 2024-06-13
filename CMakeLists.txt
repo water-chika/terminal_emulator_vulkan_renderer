@@ -4,7 +4,6 @@ project(terminal_emulator_vulkan_renderer)
 
 find_package(Vulkan REQUIRED)
 add_subdirectory(vulkan_helper)
-add_subdirectory(freetype)
 
 add_executable(generate_spirv_reader_include generate_spirv_reader_include.cpp)
 set_property(TARGET generate_spirv_reader_include PROPERTY CXX_STANDARD 23)
@@ -32,8 +31,18 @@ target_include_directories(
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
     PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/include)
 
-target_link_libraries(vulkan_renderer PUBLIC glfw Vulkan::Vulkan vulkan_helper freetype)
+target_link_libraries(vulkan_renderer PUBLIC glfw Vulkan::Vulkan vulkan_helper)
 set_property(TARGET vulkan_renderer PROPERTY CXX_STANDARD 23)
+if(WIN32)
+add_subdirectory(freetype)
+target_link_libraries(vulkan_renderer PUBLIC freetype)
+endif()
+if(1)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(FREETYPE REQUIRED freetype2)
+target_link_libraries(vulkan_renderer PUBLIC freetype)
+target_include_directories(vulkan_renderer PUBLIC ${FREETYPE_INCLUDE_DIRS})
+endif()
 
 function(compile_glsl stage glsl_file spv_file)
 add_custom_command(COMMENT "Compiling ${stage} shader"
