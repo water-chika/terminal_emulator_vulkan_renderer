@@ -64,6 +64,7 @@ function(compile_glsl_help stage file_name_without_postfix)
     )
 endfunction()
 
+file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/shaders)
 compile_glsl_help(vert vertex)
 compile_glsl_help(frag fragment)
 compile_glsl_help(geom geometry)
