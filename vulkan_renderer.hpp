@@ -417,7 +417,7 @@ public:
 
 
         char_indices_buffer = vk::SharedBuffer(vulkan::create_buffer(device, char_indices.size() * sizeof(*std::begin(char_indices)),
-            vk::BufferUsageFlagBits::eUniformBuffer), shared_device);
+            vk::BufferUsageFlagBits::eUniformBuffer | vk::BufferUsageFlagBits::eVertexBuffer), shared_device);
 
 
         char_indices_buffer_memory = vk::SharedDeviceMemory(
