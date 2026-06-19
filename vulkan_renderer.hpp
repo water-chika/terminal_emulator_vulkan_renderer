@@ -16,7 +16,7 @@ public:
         vk::DescriptorSet descriptor_set,
         vk::Framebuffer framebuffer,
         vk::Extent2D swapchain_extent,
-        vk::DispatchLoaderDynamic dldid)
+        vk::detail::DispatchLoaderDynamic dldid)
         : m_cmd{ cmd } {
         vk::CommandBufferBeginInfo begin_info{ vk::CommandBufferUsageFlagBits::eSimultaneousUse };
         cmd.begin(begin_info);
@@ -602,7 +602,7 @@ public:
             parent::descriptor_set, parent::sampler, *parent::p_terminal_buffer, parent::imageViews
         );
         pipeline = create_pipeline(parent::render_pass, parent::pipeline_layout, parent::character_count);
-        vk::DispatchLoaderDynamic dldid(parent::get_vulkan_instance(), vkGetInstanceProcAddr, parent::get_vulkan_device());
+        vk::detail::DispatchLoaderDynamic dldid(parent::get_vulkan_instance(), vkGetInstanceProcAddr, parent::get_vulkan_device());
         for (integer_less_equal<decltype(parent::imageViews.size())> i{ 0, parent::imageViews.size() }; i < parent::imageViews.size(); i++) {
             simple_draw_command draw_command{
                 command_buffers[i],
@@ -703,7 +703,7 @@ public:
         }
         create_vertex_buffer(vertices);
         pipeline = create_pipeline(device, parent::render_pass, parent::pipeline_layout, parent::character_count);
-        vk::DispatchLoaderDynamic dldid(parent::get_vulkan_instance(), vkGetInstanceProcAddr, *device);
+        vk::detail::DispatchLoaderDynamic dldid(parent::get_vulkan_instance(), vkGetInstanceProcAddr, *device);
         for (integer_less_equal<decltype(parent::imageViews.size())> i{ 0, parent::imageViews.size() }; i < parent::imageViews.size(); i++) {
             record_draw_command(
                 command_buffers[i],
@@ -735,7 +735,7 @@ public:
             vk::DescriptorSet descriptor_set,
             vk::Framebuffer framebuffer,
             vk::Extent2D swapchain_extent,
-            vk::DispatchLoaderDynamic dldid)
+            vk::detail::DispatchLoaderDynamic dldid)
     {
             vk::CommandBufferBeginInfo begin_info{ vk::CommandBufferUsageFlagBits::eSimultaneousUse };
             cmd.begin(begin_info);
