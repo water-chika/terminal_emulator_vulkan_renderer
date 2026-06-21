@@ -528,7 +528,7 @@ public:
     }
 
 protected:
-    multidimention_vector<char>* p_terminal_buffer;
+    multidimention_vector<uint32_t>* p_terminal_buffer;
     vk::SharedCommandPool command_pool;
     vk::SharedSwapchainKHR swapchain;
     vk::UniqueDescriptorPool descriptor_pool;
