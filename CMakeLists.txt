@@ -59,7 +59,7 @@ function(compile_glsl_help stage file_name_without_postfix)
 	)
     set(
         ${file_name_without_postfix}_shader_path
-        "shaders/${file_name_without_postfix}.spv"
+	"${CMAKE_BINARY_DIR}/shaders/${file_name_without_postfix}.spv"
         PARENT_SCOPE
     )
 endfunction()
