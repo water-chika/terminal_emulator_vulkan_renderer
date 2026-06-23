@@ -3,7 +3,6 @@ cmake_minimum_required(VERSION 3.20)
 project(terminal_emulator_vulkan_renderer)
 
 find_package(Vulkan REQUIRED)
-add_subdirectory(vulkan_helper)
 
 add_executable(generate_spirv_reader_include generate_spirv_reader_include.cpp)
 set_property(TARGET generate_spirv_reader_include PROPERTY CXX_STANDARD 23)
